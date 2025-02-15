@@ -2,6 +2,9 @@ import { Route, Routes } from "react-router-dom";
 
 import Sidebar from "./components/sidebar";
 import FundraisingPage from "./pages/Fundraiser";
+import AssistantPage from "./pages/Assistant";
+import Challenges from "./pages/Challenges";
+import IdeaValidationPage from "./pages/IdeaValidation";
 
 import Dashboard from "@/pages/Dashboard";
 import RecordingComponent from "@/components/RecordingComponent"; // Import the Recording Component
@@ -14,7 +17,10 @@ function App() {
         {/* <Route element={<IndexPage />} path="/" /> */}
         <Route element={<Dashboard />} path="/dashboard" />
         <Route element={<FundraisingPage />} path="/fundraising" />
-        <Route element={<RecordingComponent />} path="/pitch-rater" />{" "}
+        <Route element={<RecordingComponent />} path="/pitch-rater" />
+        <Route element={<AssistantPage />} path="/assistant" />
+        <Route element={<Challenges />} path="/challenges" />
+        <Route element={<IdeaValidationPage />} path="/idea-validation" />
         {/* New Route for Pitch Rater */}
       </Routes>
     </div>
