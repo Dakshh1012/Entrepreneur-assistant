@@ -110,7 +110,32 @@ def analyze_pitch():
         sentiment_score = sia.polarity_scores(transcribed_text)['compound']
 
         # AI Feedback
-        prompt = f"Analyze this startup pitch and give a score (0-100) with feedback: {transcribed_text}"
+        prompt = f"""
+Analyze this startup pitch and give a score (0-100) with feedback.
+Format the response as follows:
+
+Pitch Score: <score>
+
+▶ Strengths
+- <Strength 1>
+- <Strength 2>
+- <Strength 3>
+
+⚠ Areas for Improvement
+- <Improvement 1>
+- <Improvement 2>
+- <Improvement 3>
+
+Detailed Metrics:
+Clarity: <score>%
+Confidence: <score>%
+Pace: <score>%
+Engagement: <score>%
+
+Text to analyze:
+{transcribed_text}
+"""
+
         gen_model = genai.GenerativeModel("gemini-pro")
         response = gen_model.generate_content(prompt)
         ai_feedback = response.text
