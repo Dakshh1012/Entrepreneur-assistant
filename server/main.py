@@ -17,6 +17,9 @@ CHANNELS = 1
 RATE = 44100
 CHUNK = 1024
 RECORD_SECONDS = 10 
+from genai_feedback import generate_feedback
+from recommend import find_best_match
+from database import users
 
 # Initialize Flask
 app = Flask(__name__)
@@ -26,6 +29,7 @@ CORS(app)
 model = whisper.load_model("base")
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
+
 genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
 
 # Global variables
@@ -96,19 +100,25 @@ def analyze_pitch():
     if not os.path.exists(file_path):
         return jsonify({"error": "Audio file not found"}), 404
 
-    # Transcription
-    result = model.transcribe(file_path)
-    transcribed_text = result["text"]
+    try:
+        # Transcription
+        result = model.transcribe(file_path)
+        transcribed_text = result["text"]
 
-    # Sentiment Analysis
-    sentiment_score = sia.polarity_scores(transcribed_text)['compound']
+        # Sentiment Analysis
+        sentiment_score = sia.polarity_scores(transcribed_text)['compound']
 
-    # AI Feedback
-    prompt = f"Analyze this startup pitch and give a score (0-100) with feedback: {transcribed_text}"   
-    response = genai.chat(prompt)
-    ai_feedback = response.text
+        # AI Feedback
+        prompt = f"Analyze this startup pitch and give a score (0-100) with feedback: {transcribed_text}"
+        gen_model = genai.GenerativeModel("gemini-pro")
+        response = gen_model.generate_content(prompt)
+        ai_feedback = response.text
 
-    os.remove(file_path)  # Clean up
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        os.remove(file_path)  # Clean up
 
     return jsonify({
         "transcribed_text": transcribed_text,
@@ -125,10 +135,23 @@ def chatbot():
         return jsonify({"error": "Prompt is required"}), 400
 
     try:
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(user_prompt)
-
+        gen_model = genai.GenerativeModel("gemini-pro")
+        response = gen_model.generate_content(user_prompt)
         return jsonify({"response": response.text})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/recommend', methods=['POST'])
+def recommend():
+    data = request.json
+    if not data:
+        return jsonify({"error": "Invalid request data"}), 400
+
+    try:
+        best_match = find_best_match(data, users)  # Ensure `users` is defined somewhere
+        feedback = generate_feedback(data, best_match)
+        return jsonify({"feedback": feedback})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
