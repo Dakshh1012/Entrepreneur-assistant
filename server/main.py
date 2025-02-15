@@ -9,7 +9,8 @@ import threading
 import pyaudio
 import wave
 import time
-
+from dotenv import load_dotenv
+load_dotenv()
 # Constants
 AUDIO_FILE = "./audio.wav"
 FORMAT = pyaudio.paInt16
@@ -29,8 +30,8 @@ CORS(app)
 model = whisper.load_model("base")
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
-
-genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
+GEMINI_KEY = os.getenv('GEMINI_KEY')
+genai.configure(api_key=GEMINI_KEY)
 
 # Global variables
 recording = False
