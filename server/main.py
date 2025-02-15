@@ -14,7 +14,7 @@ CORS(app)
 model = whisper.load_model("base")
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
-genai.configure(api_key="YOUR_GOOGLE_GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
 
 @app.route('/analyze_pitch', methods=['POST'])
 def analyze_pitch():
@@ -44,6 +44,23 @@ def analyze_pitch():
         "sentiment_score": sentiment_score,
         "ai_feedback": ai_feedback
     })
+
+@app.route("/assistant", methods=["POST"])
+def chatbot():
+    data = request.json
+    user_prompt = data.get("prompt")
+
+    if not user_prompt:
+        return jsonify({"error": "Prompt is required"}), 400
+
+    try:
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(user_prompt)
+
+        return jsonify({"response": response.text})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
