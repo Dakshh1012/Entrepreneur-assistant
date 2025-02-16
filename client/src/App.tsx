@@ -5,6 +5,7 @@ import FundraisingPage from "./pages/Fundraiser";
 import AssistantPage from "./pages/Assistant";
 import Challenges from "./pages/Challenges";
 import IdeaValidationPage from "./pages/IdeaValidation";
+import MailerAI from "./components/MailerAi";
 
 import Dashboard from "@/pages/Dashboard";
 import RecordingComponent from "@/components/RecordingComponent"; // Import the Recording Component
@@ -21,6 +22,7 @@ function App() {
         <Route element={<AssistantPage />} path="/assistant" />
         <Route element={<Challenges />} path="/challenges" />
         <Route element={<IdeaValidationPage />} path="/idea-validation" />
+        <Route element={<MailerAI />} path="/mailer-ai" />
         {/* New Route for Pitch Rater */}
       </Routes>
     </div>

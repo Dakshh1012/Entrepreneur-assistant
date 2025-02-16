@@ -7,6 +7,7 @@ import {
   Flag,
   Lightbulb,
   PiggyBank,
+  Mail,
 } from "lucide-react";
 
 import { cn } from "../utlis.ts";
@@ -49,6 +50,12 @@ const navigation = [
     icon: Bot,
     description: "Get instant help",
   },
+  {
+    name: "Mailer AI", // New item
+    href: "/mailer-ai", // Path to the new page
+    icon: Mail, // Icon for the Mailer AI feature
+    description: "Generate and send emails with AI", // Description of the new feature
+  },
 ];
 
 export default function Sidebar() {
@@ -69,11 +76,11 @@ export default function Sidebar() {
           return (
             <Link
               key={item.name}
-              to={item.href}
               className={cn(
                 "flex flex-col gap-1 px-4 py-3 rounded-lg transition-colors",
                 isActive ? "bg-primary/10 text-primary" : "hover:bg-muted"
               )}
+              to={item.href}
             >
               <div className="flex items-center gap-3">
                 <Icon className="w-5 h-5" />

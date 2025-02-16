@@ -1,12 +1,15 @@
 import google.generativeai as genai
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
+GEMINI_KEY = os.getenv('GEMINI_KEY')
 class GeminiFeedback:
     def __init__(self):
         """
         Initialize the Gemini model.
         """
         # Include your Gemini API key directly here
-        self.api_key = 'gemini key'  # Replace with your actual Gemini API key
+        self.api_key = GEMINI_KEY  # Replace with your actual Gemini API key
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel('gemini-pro')
 

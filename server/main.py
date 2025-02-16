@@ -5,6 +5,7 @@ import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 import google.generativeai as genai
 import os
+import re
 import threading
 import pyaudio
 import wave
@@ -21,8 +22,13 @@ RECORD_SECONDS = 10
 from genai_feedback import generate_feedback
 from recommend import find_best_match
 from database import users
+from gemini_feedback_market import GeminiFeedback
 from trend_analyzer import TrendAnalyzer
-from server.gemini_feedback_market import GeminiFeedback
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
 # Initialize Flask
 app = Flask(__name__)
 CORS(app)
@@ -31,8 +37,68 @@ CORS(app)
 model = whisper.load_model("base")
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
+GEMINI_KEY = os.getenv('GEMINI_KEY')
+genai.configure(api_key=GEMINI_KEY)
 
-genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
+# Global variables
+recording = False
+audio_thread = None
+frames = []
+p = pyaudio.PyAudio()
+
+# Ensure uploads directory exists
+os.makedirs(os.path.dirname(AUDIO_FILE), exist_ok=True)
+
+# Recording function
+def record_audio():
+    global recording, frames, p
+
+    frames = []
+    stream = p.open(format=FORMAT,
+                    channels=CHANNELS,
+                    rate=RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK)
+
+    while recording:
+        data = stream.read(CHUNK)
+        frames.append(data)
+
+    stream.stop_stream()
+    stream.close()
+
+    # Ensure the directory exists before saving
+    # os.makedirs(os.path.dirname(AUDIO_FILE), exist_ok=True)
+
+    # Save the recording
+    with wave.open(AUDIO_FILE, 'wb') as wf:
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(p.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(frames))
+    print(f"✅ Audio file saved at: {AUDIO_FILE}")
+
+# Start recording API
+@app.route('/start_recording', methods=['POST'])
+def start_recording():
+    global recording, audio_thread
+    if not recording:
+        recording = True
+        audio_thread = threading.Thread(target=record_audio)
+        audio_thread.start()
+        return jsonify({"message": "Recording started"}), 200
+    return jsonify({"message": "Already recording"}), 400
+
+# Stop recording API
+@app.route('/stop_recording', methods=['POST'])
+def stop_recording():
+    global recording, audio_thread
+    if recording:
+        recording = False
+        audio_thread.join()  # Ensure recording finishes before analyzing
+        time.sleep(1)  # Allow file system to sync
+        return analyze_pitch()
+    return jsonify({"message": "Not currently recording"}), 400
 
 @app.route('/analyze_pitch', methods=['POST'])
 def analyze_pitch():
@@ -124,6 +190,10 @@ def recommend():
         return jsonify({"error": str(e)}), 500
 trend_analyzer = TrendAnalyzer()
 gemini_feedback = GeminiFeedback()
+@app.route('/health', methods=['GET'])
+def health_check():
+    return {"status": "running", "gemini_loaded": model is not None}, 200  # Assuming 'model' is your Gemini instance
+
 @app.route('/analyze-idea', methods=['POST'])
 def analyze_idea():
     try:
@@ -138,16 +208,78 @@ def analyze_idea():
             return jsonify({'error': 'Failed to analyze trends'}), 500
 
         # Step 3: Generate feedback using Gemini
-        feedback = gemini_feedback.generate_feedback(business_idea, trends_data)
+        prompt = f"""
+Generate a structured analysis report for a business idea using the idea given and trend analytics. The response should follow this strict format to ensure easy extraction using regex:
+
+Pitch Score: [numeric_value]%
+
+Market Analysis:
+- Market Trends: [numeric_value]%
+- Market Size: [numeric_value]%
+- Competition Analysis: [numeric_value]%
+- Search Volume: [numeric_value]%
+
+Suggestions:
+- [First suggestion]
+- [Second suggestion]
+- [Third suggestion]
+
+Potential Risks:
+- [First risk]
+- [Second risk]
+- [Third risk]
+
+Ensure that all sections are clearly labeled and formatted exactly as shown above. Avoid using extra explanations, and stick to this structured format.
+Business idea:
+{business_idea}
+"""
+        feedback = gemini_feedback.generate_feedback(prompt,trends_data)
         if feedback is None:
             return jsonify({'error': 'Failed to generate feedback'}), 500
-
         # Step 4: Return the feedback
         return jsonify({'feedback': feedback}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+def generate_formal_email(context):
+    """Uses Gemini AI to generate a formal email based on user input."""
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(f"Write a professional email for the following context: {context}")
+    return response.text.strip()
 
+@app.route('/send_email', methods=['POST'])
+def send_email():
+    try:
+        # Step 1: Get user input
+        data = request.json
+        recipient = data.get('recipient')
+        context = data.get('context')
 
+        if not recipient or not context:
+            return jsonify({"error": "Recipient and context are required"}), 400
 
+        # Step 2: Generate the email content using Gemini AI
+        formal_email = generate_formal_email(context)
+
+        # Step 3: Send the email
+        sender_email = "dakshjain182183@gmail.com"
+        app_password = "mexf cqpn rozz dfwq"
+
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = recipient
+        msg['Subject'] = "Important Email"
+        msg.attach(MIMEText(formal_email, 'plain'))
+
+        # Step 4: Connect to Gmail SMTP server and send email
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender_email, app_password)
+        server.sendmail(sender_email, recipient, msg.as_string())
+        server.quit()
+
+        return jsonify({"message": "Email sent successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == '__main__':
     app.run(debug=True)
