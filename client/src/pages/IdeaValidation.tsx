@@ -9,19 +9,44 @@ import {
   Textarea,
   Progress,
 } from "@heroui/react";
+import axios from "axios";
+import nlp from "compromise";
+const stopWords = new Set(["and", "or", "the", "is", "are"]);
+
+function getKeywords(text: string) {
+  return nlp(text)
+    .nouns()
+    .out("array")
+    .flatMap((phrase: string) => phrase.split(/\s+/))
+    .filter((word: string) => !stopWords.has(word.toLowerCase()));
+}
 
 export default function IdeaValidationPage() {
   const [idea, setIdea] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     setIsAnalyzing(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const keywords = getKeywords(idea);
+
+      const response = await axios.post("http://localhost:5000/analyze-idea", {
+        business_idea: idea,
+        keywords: keywords,
+      });
       setIsAnalyzing(false);
       setShowResults(true);
-    }, 2000);
+      console.log(response.data.feedback);
+    } catch (error) {
+      console.error(
+        "Error analyzing business idea:",
+        error.response?.data?.error || error.message
+      );
+      setIsAnalyzing(false);
+
+      return "An error occurred while analyzing the business idea.";
+    }
   };
 
   return (
@@ -40,7 +65,8 @@ export default function IdeaValidationPage() {
           <Button
             className="w-full"
             disabled={!idea || isAnalyzing}
-            onClick={handleAnalyze}
+            isLoading={isAnalyzing}
+            onPress={handleAnalyze}
           >
             {isAnalyzing ? "Analyzing..." : "Analyze Idea"}
           </Button>

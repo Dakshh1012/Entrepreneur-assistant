@@ -5,6 +5,7 @@ import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 import google.generativeai as genai
 import os
+import re
 import threading
 import pyaudio
 import wave
@@ -166,10 +167,34 @@ def analyze_idea():
             return jsonify({'error': 'Failed to analyze trends'}), 500
 
         # Step 3: Generate feedback using Gemini
-        feedback = gemini_feedback.generate_feedback(business_idea, trends_data)
+        prompt = f"""
+Generate a structured analysis report for a business idea using the idea given and trend analytics. The response should follow this strict format to ensure easy extraction using regex:
+
+Pitch Score: [numeric_value]%
+
+Market Analysis:
+- Market Trends: [numeric_value]%
+- Market Size: [numeric_value]%
+- Competition Analysis: [numeric_value]%
+- Search Volume: [numeric_value]%
+
+Suggestions:
+- [First suggestion]
+- [Second suggestion]
+- [Third suggestion]
+
+Potential Risks:
+- [First risk]
+- [Second risk]
+- [Third risk]
+
+Ensure that all sections are clearly labeled and formatted exactly as shown above. Avoid using extra explanations, and stick to this structured format.
+Business idea:
+{business_idea}
+"""
+        feedback = gemini_feedback.generate_feedback(prompt,trends_data)
         if feedback is None:
             return jsonify({'error': 'Failed to generate feedback'}), 500
-
         # Step 4: Return the feedback
         return jsonify({'feedback': feedback}), 200
     except Exception as e:
