@@ -3,10 +3,10 @@ import google.generativeai as genai
 class GeminiFeedback:
     def __init__(self):
         """
-        Initialize the Gemini model.
+        Initialize the Gemini model using a manually set API key.
         """
-        # Include your Gemini API key directly here
-        self.api_key = 'gemini key'  # Replace with your actual Gemini API key
+        self.api_key = "AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc"  # Manually set API key
+        
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel('gemini-pro')
 
@@ -18,10 +18,8 @@ class GeminiFeedback:
         :return: Feedback as a string.
         """
         try:
-            # Convert trends data to a readable format
             trends_summary = trends_data.to_string()
 
-            # Generate feedback using Gemini
             prompt = f"""
             Analyze the following business idea based on the provided trends data:
             Business Idea: {business_idea}
