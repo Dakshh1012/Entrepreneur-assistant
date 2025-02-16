@@ -1,6 +1,9 @@
 import google.generativeai as genai
-
-genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
+import os
+from dotenv import load_dotenv
+load_dotenv()
+GEMINI_KEY = os.getenv('GEMINI_KEY')
+genai.configure(api_key="AIzaSyA4PogB4QyXhiUbf-0eRF890GoTZBKlKcQ")
 
 def generate_feedback(user_data, match):
     prompt = f"""
