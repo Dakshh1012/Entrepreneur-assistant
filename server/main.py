@@ -24,6 +24,11 @@ from recommend import find_best_match
 from database import users
 from gemini_feedback_market import GeminiFeedback
 from trend_analyzer import TrendAnalyzer
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
 # Initialize Flask
 app = Flask(__name__)
 CORS(app)
@@ -235,5 +240,46 @@ Business idea:
         return jsonify({'feedback': feedback}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+def generate_formal_email(context):
+    """Uses Gemini AI to generate a formal email based on user input."""
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(f"Write a professional email for the following context: {context}")
+    return response.text.strip()
+
+@app.route('/send_email', methods=['POST'])
+def send_email():
+    try:
+        # Step 1: Get user input
+        data = request.json
+        recipient = data.get('recipient')
+        context = data.get('context')
+
+        if not recipient or not context:
+            return jsonify({"error": "Recipient and context are required"}), 400
+
+        # Step 2: Generate the email content using Gemini AI
+        formal_email = generate_formal_email(context)
+
+        # Step 3: Send the email
+        sender_email = "dakshjain182183@gmail.com"
+        app_password = "mexf cqpn rozz dfwq"
+
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = recipient
+        msg['Subject'] = "Important Email"
+        msg.attach(MIMEText(formal_email, 'plain'))
+
+        # Step 4: Connect to Gmail SMTP server and send email
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender_email, app_password)
+        server.sendmail(sender_email, recipient, msg.as_string())
+        server.quit()
+
+        return jsonify({"message": "Email sent successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == '__main__':
     app.run(debug=True)
