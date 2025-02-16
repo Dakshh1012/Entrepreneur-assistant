@@ -11,14 +11,15 @@ import {
 } from "@heroui/react";
 import nlp from "compromise";
 import axios from "axios";
-const stopWords = new Set(["and", "or", "the", "is", "are"]);
+const stopWords = new Set(["a", "and", "or", "the", "is", "are"]);
 
 function getKeywords(text: string) {
   return nlp(text)
     .nouns()
     .out("array")
     .flatMap((phrase: string) => phrase.split(/\s+/))
-    .filter((word: string) => !stopWords.has(word.toLowerCase()));
+    .filter((word: string) => !stopWords.has(word.toLowerCase()))
+    .slice(0, 4);
 }
 
 function getAnalysisObj(feedback: string) {
@@ -82,6 +83,7 @@ export default function IdeaValidationPage() {
     setIsAnalyzing(true);
     try {
       const keywords = getKeywords(idea);
+      console.log(keywords);
 
       const response = await axios.post("http://localhost:5000/analyze-idea", {
         business_idea: idea,
