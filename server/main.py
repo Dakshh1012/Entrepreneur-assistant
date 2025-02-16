@@ -9,6 +9,9 @@ import threading
 import pyaudio
 import wave
 import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 load_dotenv()
 # Constants
@@ -21,13 +24,8 @@ RECORD_SECONDS = 10
 from genai_feedback import generate_feedback
 from recommend import find_best_match
 from database import users
-from gemini_feedback_market import GeminiFeedback
 from trend_analyzer import TrendAnalyzer
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
-
+from server.gemini_feedback_market import GeminiFeedback
 # Initialize Flask
 app = Flask(__name__)
 CORS(app)
@@ -36,68 +34,8 @@ CORS(app)
 model = whisper.load_model("base")
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
-GEMINI_KEY = os.getenv('GEMINI_KEY')
-genai.configure(api_key=GEMINI_KEY)
 
-# Global variables
-recording = False
-audio_thread = None
-frames = []
-p = pyaudio.PyAudio()
-
-# Ensure uploads directory exists
-os.makedirs(os.path.dirname(AUDIO_FILE), exist_ok=True)
-
-# Recording function
-def record_audio():
-    global recording, frames, p
-
-    frames = []
-    stream = p.open(format=FORMAT,
-                    channels=CHANNELS,
-                    rate=RATE,
-                    input=True,
-                    frames_per_buffer=CHUNK)
-
-    while recording:
-        data = stream.read(CHUNK)
-        frames.append(data)
-
-    stream.stop_stream()
-    stream.close()
-
-    # Ensure the directory exists before saving
-    # os.makedirs(os.path.dirname(AUDIO_FILE), exist_ok=True)
-
-    # Save the recording
-    with wave.open(AUDIO_FILE, 'wb') as wf:
-        wf.setnchannels(CHANNELS)
-        wf.setsampwidth(p.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
-        wf.writeframes(b''.join(frames))
-    print(f"✅ Audio file saved at: {AUDIO_FILE}")
-
-# Start recording API
-@app.route('/start_recording', methods=['POST'])
-def start_recording():
-    global recording, audio_thread
-    if not recording:
-        recording = True
-        audio_thread = threading.Thread(target=record_audio)
-        audio_thread.start()
-        return jsonify({"message": "Recording started"}), 200
-    return jsonify({"message": "Already recording"}), 400
-
-# Stop recording API
-@app.route('/stop_recording', methods=['POST'])
-def stop_recording():
-    global recording, audio_thread
-    if recording:
-        recording = False
-        audio_thread.join()  # Ensure recording finishes before analyzing
-        time.sleep(1)  # Allow file system to sync
-        return analyze_pitch()
-    return jsonify({"message": "Not currently recording"}), 400
+genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
 
 @app.route('/analyze_pitch', methods=['POST'])
 def analyze_pitch():
@@ -189,9 +127,30 @@ def recommend():
         return jsonify({"error": str(e)}), 500
 trend_analyzer = TrendAnalyzer()
 gemini_feedback = GeminiFeedback()
-@app.route('/health', methods=['GET'])
-def health_check():
-    return {"status": "running", "gemini_loaded": model is not None}, 200  # Assuming 'model' is your Gemini instance
+@app.route('/analyze-idea', methods=['POST'])
+def analyze_idea():
+    try:
+        # Step 1: Get user input
+        data = request.json
+        business_idea = data.get('business_idea', '')
+        keywords = data.get('keywords', [])
+
+        # Step 2: Analyze trends using Pytrends
+        trends_data = trend_analyzer.analyze_trends(keywords)
+        if trends_data is None:
+            return jsonify({'error': 'Failed to analyze trends'}), 500
+
+        # Step 3: Generate feedback using Gemini
+        feedback = gemini_feedback.generate_feedback(business_idea, trends_data)
+        if feedback is None:
+            return jsonify({'error': 'Failed to generate feedback'}), 500
+
+        # Step 4: Return the feedback
+        return jsonify({'feedback': feedback}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/analyze-idea', methods=['POST'])
 def analyze_idea():

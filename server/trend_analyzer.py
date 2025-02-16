@@ -22,4 +22,4 @@ class TrendAnalyzer:
             return interest_over_time_df
         except Exception as e:
             print(f"Error analyzing trends: {e}")
-            return None 
+            return None
