@@ -9,8 +9,8 @@ import {
   Textarea,
   Progress,
 } from "@heroui/react";
-import axios from "axios";
 import nlp from "compromise";
+import axios from "axios";
 const stopWords = new Set(["and", "or", "the", "is", "are"]);
 
 function getKeywords(text: string) {
@@ -21,11 +21,63 @@ function getKeywords(text: string) {
     .filter((word: string) => !stopWords.has(word.toLowerCase()));
 }
 
+function getAnalysisObj(feedback: string) {
+  const pitchScoreMatch = feedback.match(/Pitch Score:\s*(\d+)%/);
+  const pitchScore = pitchScoreMatch ? parseInt(pitchScoreMatch[1]) : null;
+
+  // Extract Market Analysis Percentages
+  const marketTrendsMatch = feedback.match(/Market Trends:\s*(\d+)%/);
+  const marketSizeMatch = feedback.match(/Market Size:\s*(\d+)%/);
+  const competitionAnalysisMatch = feedback.match(
+    /Competition Analysis:\s*(\d+)%/
+  );
+  const searchVolumeMatch = feedback.match(/Search Volume:\s*(\d+)%/);
+
+  const marketAnalysis = {
+    marketTrends: marketTrendsMatch ? parseInt(marketTrendsMatch[1]) : null,
+    marketSize: marketSizeMatch ? parseInt(marketSizeMatch[1]) : null,
+    competitionAnalysis: competitionAnalysisMatch
+      ? parseInt(competitionAnalysisMatch[1])
+      : null,
+    searchVolume: searchVolumeMatch ? parseInt(searchVolumeMatch[1]) : null,
+  };
+
+  // Extract Suggestions
+  const suggestionsMatch = feedback.match(/Suggestions:\n((?:- .+\n?)+)/);
+  const suggestions = suggestionsMatch
+    ? suggestionsMatch[1]
+        .split("\n")
+        .map((s) => s.replace(/^- /, "").trim())
+        .filter((s) => s)
+    : [];
+
+  // Extract Potential Risks
+  const risksMatch = feedback.match(/Potential Risks:\n((?:- .+\n?)+)/);
+  const potentialRisks = risksMatch
+    ? risksMatch[1]
+        .split("\n")
+        .map((r) => r.replace(/^- /, "").trim())
+        .filter((r) => r)
+    : [];
+
+  return { pitchScore, marketAnalysis, suggestions, potentialRisks };
+}
+
 export default function IdeaValidationPage() {
   const [idea, setIdea] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
-
+  const [analysis, setAnalysis] = useState<{
+    pitchScore: number | null;
+    marketAnalysis: {
+      marketTrends: number | null;
+      marketSize: number | null;
+      competitionAnalysis: number | null;
+      searchVolume: number | null;
+    };
+    suggestions: string[];
+    potentialRisks: string[];
+  } | null>(null);
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     try {
@@ -35,9 +87,10 @@ export default function IdeaValidationPage() {
         business_idea: idea,
         keywords: keywords,
       });
+
       setIsAnalyzing(false);
       setShowResults(true);
-      console.log(response.data.feedback);
+      setAnalysis(getAnalysisObj(response.data.feedback));
     } catch (error) {
       console.error(
         "Error analyzing business idea:",
@@ -52,10 +105,11 @@ export default function IdeaValidationPage() {
   return (
     <div className="w-full mx-auto p-8 space-y-6 h-screen">
       <Card className="min-h-1/2">
-        <CardHeader>
-          <h1>Validate Your Startup Idea</h1>
+        <CardHeader className="flex flex-col">
+          <h1 className="font-bold text-2xl">Validate Your Startup Idea</h1>
+          <p>Get detailed analysis for your idea</p>
         </CardHeader>
-        <CardBody>
+        <CardBody className="flex flex-col items-center">
           <Textarea
             className="min-h-[150px] mb-4"
             placeholder="Describe your startup idea..."
@@ -63,7 +117,7 @@ export default function IdeaValidationPage() {
             onChange={(e) => setIdea(e.target.value)}
           />
           <Button
-            className="w-full"
+            className="w-42"
             disabled={!idea || isAnalyzing}
             isLoading={isAnalyzing}
             onPress={handleAnalyze}
@@ -73,40 +127,42 @@ export default function IdeaValidationPage() {
         </CardBody>
       </Card>
 
-      {showResults && (
+      {showResults && analysis && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
           <Card>
             <CardHeader>
               <h2>Analysis Results</h2>
             </CardHeader>
             <CardBody>
-              <div className="text-2xl font-bold mb-2">85%</div>
-              <Progress className="mb-8" value={85} />
+              <div className="text-2xl font-bold mb-2">
+                {analysis.pitchScore}%
+              </div>
+              <Progress className="mb-8" value={analysis.pitchScore || 0} />
 
               <div className="grid md:grid-cols-2 gap-6">
                 <MetricCard
                   description="Based on Google Trends data"
                   icon={Globe2}
                   title="Market Trends"
-                  value={90}
+                  value={analysis.marketAnalysis.marketTrends || 0}
                 />
                 <MetricCard
                   description="Market competition assessment"
                   icon={Users2}
                   title="Competition Analysis"
-                  value={75}
+                  value={analysis.marketAnalysis.competitionAnalysis || 0}
                 />
                 <MetricCard
                   description="Total addressable market"
                   icon={Globe2}
                   title="Market Size"
-                  value={88}
+                  value={analysis.marketAnalysis.marketSize || 0}
                 />
                 <MetricCard
                   description="Monthly search trends"
                   icon={Search}
                   title="Search Volume"
-                  value={85}
+                  value={analysis.marketAnalysis.searchVolume || 0}
                 />
               </div>
             </CardBody>
@@ -119,14 +175,9 @@ export default function IdeaValidationPage() {
               </CardHeader>
               <CardBody>
                 <ol className="space-y-4 list-decimal list-inside">
-                  <li>Consider focusing on enterprise customers initially</li>
-                  <li>
-                    Develop a clear differentiation strategy from existing
-                    solutions
-                  </li>
-                  <li>
-                    Build strategic partnerships with AI technology providers
-                  </li>
+                  {analysis.suggestions.map((suggestion, index) => (
+                    <li key={index}>{suggestion}</li>
+                  ))}
                 </ol>
               </CardBody>
             </Card>
@@ -137,9 +188,9 @@ export default function IdeaValidationPage() {
               </CardHeader>
               <CardBody>
                 <div className="space-y-4">
-                  <RiskItem text="High competition in the AI space" />
-                  <RiskItem text="Rapidly evolving technology landscape" />
-                  <RiskItem text="Need for significant initial investment" />
+                  {analysis.potentialRisks.map((risk, index) => (
+                    <RiskItem key={index} text={risk} />
+                  ))}
                 </div>
               </CardBody>
             </Card>
