@@ -1,6 +1,6 @@
 import google.generativeai as genai
 
-genai.configure(api_key="YOUR_API_KEY")
+genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
 
 def generate_feedback(user_data, match):
     prompt = f"""
