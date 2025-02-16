@@ -21,7 +21,8 @@ RECORD_SECONDS = 10
 from genai_feedback import generate_feedback
 from recommend import find_best_match
 from database import users
-
+from gemini_feedback_market import GeminiFeedback
+from trend_analyzer import TrendAnalyzer
 # Initialize Flask
 app = Flask(__name__)
 CORS(app)
@@ -181,6 +182,33 @@ def recommend():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+trend_analyzer = TrendAnalyzer()
+gemini_feedback = GeminiFeedback()
+@app.route('/health', methods=['GET'])
+def health_check():
+    return {"status": "running", "gemini_loaded": model is not None}, 200  # Assuming 'model' is your Gemini instance
 
+@app.route('/analyze-idea', methods=['POST'])
+def analyze_idea():
+    try:
+        # Step 1: Get user input
+        data = request.json
+        business_idea = data.get('business_idea', '')
+        keywords = data.get('keywords', [])
+
+        # Step 2: Analyze trends using Pytrends
+        trends_data = trend_analyzer.analyze_trends(keywords)
+        if trends_data is None:
+            return jsonify({'error': 'Failed to analyze trends'}), 500
+
+        # Step 3: Generate feedback using Gemini
+        feedback = gemini_feedback.generate_feedback(business_idea, trends_data)
+        if feedback is None:
+            return jsonify({'error': 'Failed to generate feedback'}), 500
+
+        # Step 4: Return the feedback
+        return jsonify({'feedback': feedback}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 if __name__ == '__main__':
     app.run(debug=True)
