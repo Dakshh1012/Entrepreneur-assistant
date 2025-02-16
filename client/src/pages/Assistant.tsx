@@ -1,9 +1,10 @@
 /* eslint-disable prettier/prettier */
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Send, Mic } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Button, Input } from "@heroui/react";
-
+import axios from "axios";
+import ReactMarkdown from "react-markdown";
 import { cn } from "@/utlis";
 
 type Message = {
@@ -31,7 +32,24 @@ const AssistantPage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchChatbotResponse = async (prompt: string) => {
+    try {
+      const response = await axios.post("http://localhost:5000/assistant", {
+        prompt,
+      });
+
+      return response.data.response;
+    } catch (error) {
+      console.error(
+        "Error fetching chatbot response:",
+        error.response?.data?.error || error.message
+      );
+
+      return "An error occurred while fetching response.";
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
@@ -43,17 +61,16 @@ const AssistantPage: React.FC = () => {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    const response = await fetchChatbotResponse(input);
 
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        content:
-          "This is a placeholder response. In the real implementation, this would come from your AI backend.",
-        role: "assistant",
-      };
+    console.log(response);
+    const assistantMessage: Message = {
+      id: uuidv4(),
+      content: response,
+      role: "assistant",
+    };
 
-      setMessages((prev) => [...prev, assistantMessage]);
-    }, 1000);
+    setMessages((prev) => [...prev, assistantMessage]);
   };
 
   return (
@@ -70,7 +87,7 @@ const AssistantPage: React.FC = () => {
                   : "bg-primary text-primary-foreground ml-auto"
               )}
             >
-              {message.content}
+              <ReactMarkdown className="prose">{message.content}</ReactMarkdown>
             </div>
           ))}
           <div ref={messagesEndRef} />
