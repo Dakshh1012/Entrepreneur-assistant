@@ -5,6 +5,19 @@ import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 import google.generativeai as genai
 import os
+import threading
+import pyaudio
+import wave
+import time
+from dotenv import load_dotenv
+load_dotenv()
+# Constants
+AUDIO_FILE = "./audio.wav"
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+CHUNK = 1024
+RECORD_SECONDS = 10 
 from genai_feedback import generate_feedback
 from recommend import find_best_match
 from database import users
@@ -19,17 +32,15 @@ model = whisper.load_model("base")
 nltk.download('vader_lexicon')
 sia = SentimentIntensityAnalyzer()
 
-genai.configure(api_key="api key")
+genai.configure(api_key="AIzaSyAOTkBOm3bjJJI0TXEtyoQhTODiYgH76rc")
 
 @app.route('/analyze_pitch', methods=['POST'])
 def analyze_pitch():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    file_path = AUDIO_FILE
 
-    file = request.files['file']
-    os.makedirs("uploads", exist_ok=True)  # Ensure uploads directory exists
-    file_path = "uploads/audio.wav"
-    file.save(file_path)
+    # Double-check file exists before proceeding
+    if not os.path.exists(file_path):
+        return jsonify({"error": "Audio file not found"}), 404
 
     try:
         # Transcription
@@ -40,7 +51,32 @@ def analyze_pitch():
         sentiment_score = sia.polarity_scores(transcribed_text)['compound']
 
         # AI Feedback
-        prompt = f"Analyze this startup pitch and give a score (0-100) with feedback: {transcribed_text}"
+        prompt = f"""
+Analyze this startup pitch and give a score (0-100) with feedback.
+Format the response as follows:
+
+Pitch Score: <score>
+
+▶ Strengths
+- <Strength 1>
+- <Strength 2>
+- <Strength 3>
+
+⚠ Areas for Improvement
+- <Improvement 1>
+- <Improvement 2>
+- <Improvement 3>
+
+Detailed Metrics:
+Clarity: <score>%
+Confidence: <score>%
+Pace: <score>%
+Engagement: <score>%
+
+Text to analyze:
+{transcribed_text}
+"""
+
         gen_model = genai.GenerativeModel("gemini-pro")
         response = gen_model.generate_content(prompt)
         ai_feedback = response.text

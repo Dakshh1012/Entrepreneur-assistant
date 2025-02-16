@@ -1,21 +1,29 @@
 import { Route, Routes } from "react-router-dom";
-import IndexPage from "@/pages/index";
-import DocsPage from "@/pages/docs";
-import PricingPage from "@/pages/pricing";
-import BlogPage from "@/pages/blog";
-import AboutPage from "@/pages/about";
+
+import Sidebar from "./components/sidebar";
+import FundraisingPage from "./pages/Fundraiser";
+import AssistantPage from "./pages/Assistant";
+import Challenges from "./pages/Challenges";
+import IdeaValidationPage from "./pages/IdeaValidation";
+
+import Dashboard from "@/pages/Dashboard";
 import RecordingComponent from "@/components/RecordingComponent"; // Import the Recording Component
 
 function App() {
   return (
-    <Routes>
-      <Route element={<IndexPage />} path="/" />
-      <Route element={<DocsPage />} path="/docs" />
-      <Route element={<PricingPage />} path="/pricing" />
-      <Route element={<BlogPage />} path="/blog" />
-      <Route element={<AboutPage />} path="/about" />
-      <Route element={<RecordingComponent />} path="/pitch-rater" /> {/* New Route for Pitch Rater */}
-    </Routes>
+    <div className="flex w-full">
+      <Sidebar />
+      <Routes>
+        {/* <Route element={<IndexPage />} path="/" /> */}
+        <Route element={<Dashboard />} path="/dashboard" />
+        <Route element={<FundraisingPage />} path="/fundraising" />
+        <Route element={<RecordingComponent />} path="/pitch-rater" />
+        <Route element={<AssistantPage />} path="/assistant" />
+        <Route element={<Challenges />} path="/challenges" />
+        <Route element={<IdeaValidationPage />} path="/idea-validation" />
+        {/* New Route for Pitch Rater */}
+      </Routes>
+    </div>
   );
 }
 
